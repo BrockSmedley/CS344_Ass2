@@ -23,9 +23,10 @@ int getRandomNameIndex(int* takenIndices){
     taken = false;
     r = rand() % 10;
     for (i = 0; i < size; i++){
-      if (sizeof takenIndices[i] == 0)
+      if (sizeof takenIndices[i] == 0){
 	taken = false;
 	break;
+      }
       if (takenIndices[i] == r){
 	taken = true;
 	break;
