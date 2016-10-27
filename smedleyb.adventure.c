@@ -63,20 +63,13 @@ char* assembleData(int roomNum, char* roomName, char* roomType){
   return data;
 }
 
-// appends connections to data string
-char* appendConnectionData(char* data, char** connections, int numConnections){
-  char* output = malloc(1337);
-
-  strcpy(output, data);
-
-  int i = 0;
-  for (; i < numConnections; i++){
-    strcat(output, connections[i]);
+void appendConnectionsToFile(int file_descriptor, char** connections, int numConnections){
+  int i;
+  for (i = 0; i < numConnections; i++){
+    write(file_descriptor, connections[i], strlen(connections[i]) * sizeof(char));
     if (i < numConnections - 1)
-      strcat(output, ",");
+      write(file_descriptor, ",", sizeof(char));
   }
-
-  return output;
 }
 
 void populateRoomFileData(int roomNum, char* roomName, char* roomType, int file_descriptor){
@@ -86,10 +79,6 @@ void populateRoomFileData(int roomNum, char* roomName, char* roomType, int file_
 
   // write the file shit
   nwritten = write(file_descriptor, data, strlen(data) * sizeof(char));
-}
-
-void overwriteDataFile(int file_descriptor, char* newData){
-  write(file_descriptor, newData, strlen(newData) * sizeof(char));
 }
 
 char* readDataFile(int file_descriptor){
@@ -118,7 +107,7 @@ int createRoomFile(int roomNum, char* roomName, char* roomType){
   int i = 0;
   // create temp file
   int file_descriptor;
-  file_descriptor = open(fileName, O_RDWR | O_CREAT | O_TRUNC);
+  file_descriptor = open(fileName, O_RDWR | O_CREAT | O_APPEND);
 
   // make sure the file was able to open, else error
   if (file_descriptor < 0){
@@ -275,27 +264,21 @@ int main(){
 
     char* oldData = readDataFile(file_descriptors[i]);
     printf("Old file contents:\n%s\n", oldData);
-    printf("wtf\n");
-
-    
-    printf("que\n");
-
+       
     connections = createConnections(takenRoomNames[i], roomType, takenRoomNames, SIZE);
 
     while (connections[numConnections] != NULL){
       numConnections++;
     }
 
-    char* newData = appendConnectionData(oldData, connections, numConnections);
+    int j = 0;
+        
+    // write new data to file (append)
+    appendConnectionsToFile(file_descriptors[i], connections, numConnections);
     
     // empty out the connections after we've used them
     memset(connections, 0, numConnections * (sizeof connections[0]));
 
-    int j = 0;
-        
-    // write new data to file (truncate)
-    overwriteDataFile(file_descriptors[i], newData);
-    
     printf("New file contents:\n%s\n", readDataFile(file_descriptors[i]));
   }
   
