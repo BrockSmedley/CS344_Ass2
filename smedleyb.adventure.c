@@ -183,6 +183,8 @@ char** createConnections(char* roomName, char* roomType, char* roomNames[], int 
   return conns;
 }
 
+
+
 int main(){
   dir = malloc(420);
   path = malloc(420);
@@ -282,6 +284,32 @@ int main(){
     printf("New file contents:\n%s\n", readDataFile(file_descriptors[i]));
   }
   
+  // game loop
+  int gameDone = false;
+  while (gameDone == false){
+    char* input = malloc(69 * sizeof(char));
+    int n = 20;
+
+    // get user input
+    fgets(input, n, stdin);
+
+    // strip newline char
+    char *pos;
+    if ((pos=strchr(input, '\n')) != NULL)
+      *pos = '\0';
+
+    printf("you entered '%s'\n", input);
+
+    // check value
+    if (strlen(input) == 0){
+      printf("you need to enter something\n");
+    }
+    else if (strcmp(input, "swag") == 0)
+      gameDone = true;
+
+    free(input);
+  }
+
   // deletes files
   deleteRoomFiles(takenRoomNames, SIZE);
 
