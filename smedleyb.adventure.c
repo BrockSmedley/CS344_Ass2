@@ -3,10 +3,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 int true = 1;
 int false = 0;
-const int SIZE = 5;
+const int SIZE = 7;
+char* dir;
+char* dirp = "smedleyb.rooms.";
 
 
 // accepts an array of integers representing taken name indices
@@ -16,17 +19,11 @@ int getRandomNameIndex(int* takenIndices){
   int i, r;
   int taken, size;
 
-  size = (sizeof takenIndices / sizeof *takenIndices);
-
   // generate a random number and test it against the list of index numbers
   do{
     taken = false;
     r = rand() % 10;
-    for (i = 0; i < size; i++){
-      if (sizeof takenIndices[i] == 0){
-	taken = false;
-	break;
-      }
+    for (i = 0; i < 10; i++){
       if (takenIndices[i] == r){
 	taken = true;
 	break;
@@ -40,9 +37,8 @@ int getRandomNameIndex(int* takenIndices){
 // create data file
 // format:
 // <roomNum>&<roomName>&<type>&<conn1>,<conn2>,<conn3>
-char* assembleData(int roomNum, char* roomName, char* roomType, char* connections[]){
+char* assembleData(int roomNum, char* roomName, char* roomType){
   char* data = malloc(420);
-  //char buffer[420];
   
   // convert roomNum to string
   char rn[15];
@@ -58,12 +54,15 @@ char* assembleData(int roomNum, char* roomName, char* roomType, char* connection
   // add type to data
   strcat(data, "&");
   strcat(data, roomType);
+
+  // prepare for adding connections
+  strcat(data, "&");
   
   return data;
 }
 
-void populateRoomFileData(int roomNum, char* roomName, char* roomType, char* connections[], int file_descriptor){
-  char* data = assembleData(roomNum, roomName, roomType, connections);// "FUCKIN SHIT BRO THIS IS AN EXAMPLE";
+void populateRoomFileData(int roomNum, char* roomName, char* roomType, int file_descriptor){
+  char* data = assembleData(roomNum, roomName, roomType);// "FUCKIN SHIT BRO THIS IS AN EXAMPLE";
   int size = 512;// = sizeof data / sizeof *data;
   char readBuffer[size];
   
@@ -77,75 +76,133 @@ void populateRoomFileData(int roomNum, char* roomName, char* roomType, char* con
   lseek(file_descriptor, 0, SEEK_SET);
   nread = read(file_descriptor, readBuffer, size);
   printf("File contents: \n%s\n", readBuffer);
-
-  printf("nwritten: %d\n", nwritten);
 }
 
 // creates a temporary room file and returns its name
-char* createRoomFile(int roomNum, char* roomName, char* roomType, char* connections[]){
+char* createRoomFile(int roomNum, char* roomName, char* roomType){
   char* fileName;
-  int numConnections;
- 
+
   fileName = roomName;
-  numConnections = sizeof connections / sizeof *connections;
 
   int i = 0;
-  for (; i < numConnections; i++){
-    // create temp file
-    int file_descriptor;
-    file_descriptor = open(fileName, O_RDWR | O_CREAT | O_TRUNC);
+  // create temp file
+  int file_descriptor;
+  file_descriptor = open(fileName, O_RDWR | O_CREAT | O_TRUNC);
 
-    if (file_descriptor < 0)
-      printf("Could not open file \"%s\" \n", fileName);
-    /*else
-      printf("O_CREAT created file \"%s\" \n", fileName);
-      */
-    
-    // populate file with info
-    populateRoomFileData(roomNum, roomName, roomType, connections, file_descriptor);
+  // make sure the file was able to open, else error
+  if (file_descriptor < 0){
+    printf("Could not open file \"%s\" \n", fileName);
   }
+
+  // populate file with info
+  populateRoomFileData(roomNum, roomName, roomType, file_descriptor);
 
   return fileName;
 }
 
 // delete all temporary files created
-void deleteRoomFiles(char* fileNames[], int numRooms){
+void deleteRoomFiles(char* dir, char* fileNames[], int numRooms){
   int res, i = 0;
-  printf("numRooms: %d\n", numRooms);
   for (; i < numRooms; i++){
     // delete file associated with name
-    printf("deleting file \"%s\" \n", fileNames[i]);
+    printf("deleting file: %s\n", fileNames[i]);
     res = remove(fileNames[i]);
 
     if (res != 0)
 	printf("error: could not delete file \"%s\"\n", fileNames[i]);
   }
+
+  rmdir(dir);
 }
 
-char** createConnections(int roomNum, char* fileNames[], int numConnections){
+void tester(char** files, int size){
+  int i = 0;
+  for (; i < size; i++)
+    printf("fuckin shit: %s\n", files[i]);
+}
+
+// creates connections for a room
+// returns array of room names to connect to
+void createConnections(char* roomName, char* roomType, char* roomNames[], int numRooms){
+  static char* conns[6]; // just using max value for EZ-ness
+  int shift;
+  
+  if (roomType == "START")
+    shift = 3;
+  else
+    shift = 2;
+  
+  int numConnections = rand() % 3; // get random number [0, 3) aka [0, 2]
+  	// since all rooms have bidirectional connections, decrease range by 1
+  numConnections += shift; // add shift to effectively make the range [3,5]
+ 
+  printf("Creating connections for %s\n", roomName);
+  printf("numConnections requested: %d\n", numConnections);
+
+  int randRoom, i = 0, taken = false;
+
+  for (; i < numConnections; i++){ // for the number of connections we need to make
+    do{ // find a random room to connect to
+      // random room index from 0 to SIZE (number of available rooms)
+      randRoom = rand() % SIZE;
+
+      // check that we haven't chosen this room already
+      int j = 0;
+      taken = false;
+      for (; j < SIZE; j++){
+	if (conns[j] == roomNames[randRoom]){
+	  taken = true;
+	}
+      }
+    }while(taken);
+
+    printf("connection: %s\n", roomNames[randRoom]);
+
+    char* n = malloc(32);
+    //strcpy(n, roomNames[randRoom]);
+    conns[i] = n;
+    //printf("conns[i]: %s\n", conns[i]);
+  }
+  //return conns;
 }
 
 int main(){
+  // make subdir name
+  dir = malloc(64);
+  strcpy(dir, dirp);
+  int pid = getppid();
+  // turn pid into a string
+  char* pidc = malloc(16);
+  sprintf(pidc, "%d", pid);
+  // concat the shit you need to make a directory name
+  strcat(dir, pidc);
+  printf("%s\n", dir);
+
+  // make our subdirectory
+  mkdir(dir, 0700);
+
   //generate random seed
   srand(time(NULL));
 
   //create list of room names
-  char* names[10] = {"BODUP", "QEBOP", "EGNIAZ", "FLINKUS", "GREMBO", "SLIZBAR", "YICHNAZ", "WAGNUS", "SCHLEMBOB", "QUAZMO"};
+  char* names[] = {"Murica", "Kazakhstan", "Djibouti", "Kiribati", "Rwanda", "Tajikistan", "Abkhazia", "Nagorno-Karabakh", "Transnistria", "Ceskoslovensko"};
 
   int takenNameIndices[SIZE];
   char* takenRoomNames[SIZE];
 
   int i;
+  // create all the rooms
   for (i = 0; i < SIZE; i++){
+    char* roomType;
+
     // get a random number to assign a room name
     int roomNum = i;
     int nameIndex = getRandomNameIndex(takenNameIndices);
 
-    printf("nameIndex: %d\n", nameIndex);
-
+    // get a name from the list
     char* roomName = names[nameIndex];
-    char* roomType;
-    
+
+    // keep track of which names are taken
     takenNameIndices[i] = nameIndex;
     takenRoomNames[i] = roomName;
     
@@ -156,18 +213,44 @@ int main(){
     else
       roomType = "MID";
 
-    printf("roomName: %s\n", roomName);
+    printf("\nroomName: %s\n", roomName);
 
-    createRoomFile(i, roomName, roomType, NULL);
+    // make connections for the room
+    char** conns;
+    
+    /*
+    int k = 0;
+    int s = 0;
+    
+    while (conns[s] != NULL){
+      printf("conns[s]: %s\n", conns[s]);
+      s++;
+    }
+    printf("conns size: %d\n", s);
+
+    printf("connections:\n");
+    for (; k < s; k++)
+      printf("%s\n", conns[k]);
+
+    */
+
+    createRoomFile(i, roomName, roomType);
   }
 
-  printf("takenRoomNames:\n");
-  for (i = 0; i < SIZE; i++)
-    printf("%s\n", takenRoomNames[i]);
+  for (i = 0; i < SIZE; i++){
+    char* roomType;
+    if (i == 0)
+      roomType = "START";
+    else if (i == SIZE-1)
+      roomType = "END";
+    else
+      roomType = "MID";
 
-
-  // SEGFAULT-ing
-  deleteRoomFiles(takenRoomNames, SIZE);
+    createConnections(takenRoomNames[i], roomType, takenRoomNames, SIZE);
+  }
+  
+  // deletes files and subdirectory
+  deleteRoomFiles(dir, takenRoomNames, SIZE);
 
   return 0;
 }
