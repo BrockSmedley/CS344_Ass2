@@ -69,8 +69,6 @@ char* appendConnectionData(char* data, char** connections, int numConnections){
 
   strcpy(output, data);
 
-  printf("numConnections: %d\n", numConnections);
-
   int i = 0;
   for (; i < numConnections; i++){
     strcat(output, connections[i]);
@@ -88,7 +86,10 @@ void populateRoomFileData(int roomNum, char* roomName, char* roomType, int file_
 
   // write the file shit
   nwritten = write(file_descriptor, data, strlen(data) * sizeof(char));
+}
 
+void overwriteDataFile(int file_descriptor, char* newData){
+  write(file_descriptor, newData, strlen(newData) * sizeof(char));
 }
 
 char* readDataFile(int file_descriptor){
@@ -282,19 +283,20 @@ int main(){
     connections = createConnections(takenRoomNames[i], roomType, takenRoomNames, SIZE);
 
     while (connections[numConnections] != NULL){
-      printf("supposed connection: %s\n", connections[numConnections]);
       numConnections++;
     }
 
-    printf("numConnections_main: %d\n", numConnections);
-
     char* newData = appendConnectionData(oldData, connections, numConnections);
+    
+    // empty out the connections after we've used them
     memset(connections, 0, numConnections * (sizeof connections[0]));
 
     int j = 0;
         
-    printf("New file contents:\n%s\n", newData);
+    // write new data to file (truncate)
+    overwriteDataFile(file_descriptors[i], newData);
     
+    printf("New file contents:\n%s\n", readDataFile(file_descriptors[i]));
   }
   
   // deletes files
