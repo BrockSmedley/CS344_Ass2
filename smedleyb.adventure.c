@@ -254,29 +254,16 @@ int main(){
     // make connections for the room
     char** conns;
     
-    /*
-    int k = 0;
-    int s = 0;
-    
-    while (conns[s] != NULL){
-      printf("conns[s]: %s\n", conns[s]);
-      s++;
-    }
-    printf("conns size: %d\n", s);
-
-    printf("connections:\n");
-    for (; k < s; k++)
-      printf("%s\n", conns[k]);
-
-    */
-
     int file_descriptor = createRoomFile(i, roomName, roomType);
     file_descriptors[i] = file_descriptor;
   }
 
   int numConnections;
+  char** connections;
+  char* roomType;
+
   for (i = 0; i < SIZE; i++){
-    char* roomType;
+    numConnections = 0;
     if (i == 0)
       roomType = "START";
     else if (i == SIZE-1)
@@ -287,23 +274,27 @@ int main(){
 
     char* oldData = readDataFile(file_descriptors[i]);
     printf("Old file contents:\n%s\n", oldData);
+    printf("wtf\n");
 
-    char** connections;
+    
+    printf("que\n");
+
     connections = createConnections(takenRoomNames[i], roomType, takenRoomNames, SIZE);
 
-    /*
-    numConnections = 0;
-    while (connections[numConnections] != NULL)
+    while (connections[numConnections] != NULL){
+      printf("supposed connection: %s\n", connections[numConnections]);
       numConnections++;
+    }
 
     printf("numConnections_main: %d\n", numConnections);
 
     char* newData = appendConnectionData(oldData, connections, numConnections);
+    memset(connections, 0, numConnections * (sizeof connections[0]));
 
+    int j = 0;
+        
     printf("New file contents:\n%s\n", newData);
-
-    numConnections = 0;
-    */
+    
   }
   
   // deletes files
